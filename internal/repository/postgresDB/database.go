@@ -95,12 +95,12 @@ func (s *Storage) GetUser(ctx context.Context, email string) (*User, error) {
 	return &user, nil
 }
 
-func (s *Storage) CreateShortLink(ctx context.Context, shortLink string, longLink string, userID int) (*Link, error) {
+func (s *Storage) CreateShortLink(ctx context.Context, shortLink string, longLink string, userEmail int) (*Link, error) {
 	var link Link
 	expiresAt := time.Now().UTC().Add(linkExpireIn)
 	query, args, err := s.queryBuilder.Insert("urls").
-		Columns("short_url", "long_url", "created_at", "user_id", "expires_at").
-		Values(shortLink, longLink, time.Now().UTC().Format(time.RFC3339), userID, expiresAt.Format(time.RFC3339)).
+		Columns("short_url", "long_url", "created_at", "user_email", "expires_at").
+		Values(shortLink, longLink, time.Now().UTC().Format(time.RFC3339), userEmail, expiresAt.Format(time.RFC3339)).
 		Suffix("RETURNING short_url, long_url, expires_at").
 		ToSql()
 

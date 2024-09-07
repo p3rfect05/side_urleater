@@ -26,7 +26,7 @@ func (h *Handlers) GetMainPage(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	fmt.Printf("%v\n", session.Values)
+	fmt.Printf("GetMainPage: %v\n", session.Values)
 
 	if _, ok := session.Values["email"]; !ok {
 		return c.Redirect(http.StatusTemporaryRedirect, "/login")
@@ -140,4 +140,23 @@ func (h *Handlers) PostRegister(c echo.Context) error {
 
 	}
 	return c.JSON(http.StatusOK, echo.Map{})
+}
+
+type CreateShortLinkRequest struct {
+	ShortURL string `json:"short_url"`
+	LongURL  string `json:"long_url"`
+}
+
+func (h *Handlers) CreateShortLink(c echo.Context) error {
+	session, err := h.Store.Get(c.Request(), "session_key")
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	fmt.Printf("CreateShortLink: %v\n", session.Values)
+
+	if _, ok := session.Values["email"]; !ok {
+		return c.Redirect(http.StatusTemporaryRedirect, "/login")
+	}
 }
