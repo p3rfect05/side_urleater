@@ -3,16 +3,16 @@ CREATE TABLE IF NOT EXISTS urls (
     long_url varchar NOT NULL,
     user_id int NOT NULL,
     created_at timestamp NOT NULL,
-    updated_at timestamp NOT NULL,
+    updated_at timestamp NOT NULL DEFAULT (timezone('utc', now())),
     expires_at timestamp NOT NULL,
 );
 
 CREATE TABLE IF NOT EXISTS users (
-    id int PRIMARY KEY,
-    email varchar NOT NULL,
+    email varchar PRIMARY KEY,
+    password_hash varchar,
     created_at timestamp NOT NULL,
-    updated_at timestamp NOT NULL,
-    urls_left int NOT NULL
+    updated_at timestamp NOT NULL DEFAULT (timezone('utc', now())),
+    urls_left int NOT NULL DEFAULT 10
 
 );
 

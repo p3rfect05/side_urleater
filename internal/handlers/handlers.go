@@ -28,3 +28,20 @@ func (h *Handlers) GetMainPage(c echo.Context) error {
 		"hello": "goodbye",
 	})
 }
+
+func (h *Handlers) PostLogin(c echo.Context) error {
+
+}
+
+func (h *Handlers) GetLogout(c echo.Context) error {
+
+}
+
+type RegisterRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (h *Handlers) PostRegister(c echo.Context) error {
+
+}
