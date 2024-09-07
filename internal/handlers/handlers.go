@@ -21,13 +21,17 @@ type Handlers struct {
 
 func (h *Handlers) GetMainPage(c echo.Context) error {
 	session, err := h.Store.Get(c.Request(), "session_key")
+
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
+
 	fmt.Printf("%v\n", session.Values)
-	if len(session.Values) == 0 {
+
+	if _, ok := session.Values["email"]; !ok {
 		return c.Redirect(http.StatusTemporaryRedirect, "/login")
 	}
+
 	return c.JSON(http.StatusOK, echo.Map{
 		"hello": "goodbye",
 	})
@@ -54,15 +58,19 @@ func (h *Handlers) PostLogin(c echo.Context) error {
 	}
 
 	err := h.Service.LoginUser(ctx, requestData.Email, requestData.Password)
+
 	if err != nil {
 		log.Println(err)
 		return c.JSON(http.StatusInternalServerError, err)
 	}
+
 	session, err := h.Store.Get(c.Request(), "session_key")
+
 	if err != nil {
 		log.Printf("Error getting session: %v\n", err)
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
+
 	session.Values["email"] = requestData.Email
 
 	if err = session.Save(c.Request(), c.Response()); err != nil {
@@ -111,15 +119,19 @@ func (h *Handlers) PostRegister(c echo.Context) error {
 	}
 
 	err := h.Service.RegisterUser(ctx, requestData.Email, requestData.Password)
+
 	if err != nil {
 		log.Println(err)
 		return c.JSON(http.StatusInternalServerError, err)
 	}
+
 	session, err := h.Store.Get(c.Request(), "session_key")
+
 	if err != nil {
 		log.Printf("Error getting session: %v\n", err)
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
+
 	session.Values["email"] = requestData.Email
 
 	if err = session.Save(c.Request(), c.Response()); err != nil {

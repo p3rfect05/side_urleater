@@ -1,4 +1,6 @@
 run:
+	docker compose up -d
+	make migrate
 	go run cmd/main.go
 
 migrate:
