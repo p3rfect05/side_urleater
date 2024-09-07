@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS urls (
     user_id int NOT NULL,
     created_at timestamp NOT NULL,
     updated_at timestamp NOT NULL DEFAULT (timezone('utc', now())),
-    expires_at timestamp NOT NULL,
+    expires_at timestamp NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS users (

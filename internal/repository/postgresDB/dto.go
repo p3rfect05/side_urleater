@@ -5,7 +5,7 @@ import "time"
 type User struct {
 	Email        string
 	PasswordHash string
-	UrlsLeft     string
+	UrlsLeft     int
 }
 
 type Link struct {
