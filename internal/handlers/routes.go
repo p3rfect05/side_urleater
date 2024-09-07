@@ -11,6 +11,7 @@ type ServerInterface interface {
 func GetRoutes(si ServerInterface) *echo.Echo {
 	e := echo.New()
 	e.GET("/", si.GetMainPage)
+
 	return e
 
 }
