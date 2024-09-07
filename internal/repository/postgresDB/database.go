@@ -95,7 +95,7 @@ func (s *Storage) GetUser(ctx context.Context, email string) (*User, error) {
 	return &user, nil
 }
 
-func (s *Storage) CreateShortLink(ctx context.Context, shortLink string, longLink string, userEmail int) (*Link, error) {
+func (s *Storage) CreateShortLink(ctx context.Context, shortLink string, longLink string, userEmail string) (*Link, error) {
 	var link Link
 	expiresAt := time.Now().UTC().Add(linkExpireIn)
 	query, args, err := s.queryBuilder.Insert("urls").

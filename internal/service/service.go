@@ -12,7 +12,7 @@ type Storage interface {
 	CreateUser(ctx context.Context, email string, password string) error
 	ChangePassword(ctx context.Context, email string, password string) error
 	GetUser(ctx context.Context, email string) (*postgresDB.User, error)
-	CreateShortLink(ctx context.Context, shortLink string, longLink string, userID int) (*postgresDB.Link, error)
+	CreateShortLink(ctx context.Context, shortLink string, longLink string, userID string) (*postgresDB.Link, error)
 	GetShortLink(ctx context.Context, shortLink string) (*postgresDB.Link, error)
 	DeleteShortLink(ctx context.Context, shortLink string) error
 	ExtendShortLink(ctx context.Context, shortLink string, expiresAt time.Time) (*postgresDB.Link, error)
@@ -52,7 +52,13 @@ func (s *Service) RegisterUser(ctx context.Context, email string, password strin
 
 	return nil
 }
-
+func (s *Service) CreateShortLink(ctx context.Context, shortLink string, longLink string, userEmail string) (*postgresDB.Link, error) {
+	link, err := s.storage.CreateShortLink(ctx, shortLink, longLink, userEmail)
+	if err != nil {
+		return nil, err
+	}
+	return link, nil
+}
 func validatePassword(password string) bool {
 	return len(password) > 7 // TODO add more validation to password
 }

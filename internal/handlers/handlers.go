@@ -2,16 +2,19 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/antonlindstrom/pgstore"
 	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
+	"urleater/internal/repository/postgresDB"
 )
 
 type Service interface {
 	LoginUser(ctx context.Context, email string, password string) error
 	RegisterUser(ctx context.Context, email string, password string) error
+	CreateShortLink(ctx context.Context, shortLink string, longLink string, userEmail string) (*postgresDB.Link, error)
 }
 
 type Handlers struct {
@@ -19,17 +22,31 @@ type Handlers struct {
 	Store   *pgstore.PGStore
 }
 
-func (h *Handlers) GetMainPage(c echo.Context) error {
-	session, err := h.Store.Get(c.Request(), "session_key")
+func retrieveEmailFromSession(c echo.Context, store *pgstore.PGStore) (string, error) {
+	session, err := store.Get(c.Request(), "session_key")
 
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, err.Error())
+		return "", fmt.Errorf("error getting session: %w", err)
 	}
 
-	fmt.Printf("GetMainPage: %v\n", session.Values)
-
 	if _, ok := session.Values["email"]; !ok {
+		return "", ErrNoEmailFound
+	}
+	res := session.Values["email"].(string)
+	return res, nil
+}
+
+func (h *Handlers) GetMainPage(c echo.Context) error {
+	_, err := retrieveEmailFromSession(c, h.Store)
+
+	switch {
+	case errors.Is(err, nil):
+
+	case errors.Is(err, ErrNoEmailFound):
 		return c.Redirect(http.StatusTemporaryRedirect, "/login")
+
+	default:
+		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, echo.Map{
@@ -43,6 +60,12 @@ type LoginRequest struct {
 }
 
 func (h *Handlers) PostLogin(c echo.Context) error {
+	email, err := retrieveEmailFromSession(c, h.Store)
+
+	if email != "" {
+		return c.Redirect(http.StatusTemporaryRedirect, "/")
+	}
+
 	ctx := c.Request().Context()
 
 	requestData := new(LoginRequest)
@@ -57,7 +80,7 @@ func (h *Handlers) PostLogin(c echo.Context) error {
 		}
 	}
 
-	err := h.Service.LoginUser(ctx, requestData.Email, requestData.Password)
+	err = h.Service.LoginUser(ctx, requestData.Email, requestData.Password)
 
 	if err != nil {
 		log.Println(err)
@@ -104,6 +127,12 @@ type RegisterRequest struct {
 }
 
 func (h *Handlers) PostRegister(c echo.Context) error {
+	email, err := retrieveEmailFromSession(c, h.Store)
+
+	if email != "" {
+		return c.Redirect(http.StatusTemporaryRedirect, "/")
+	}
+
 	ctx := c.Request().Context()
 
 	requestData := new(RegisterRequest)
@@ -118,7 +147,7 @@ func (h *Handlers) PostRegister(c echo.Context) error {
 		}
 	}
 
-	err := h.Service.RegisterUser(ctx, requestData.Email, requestData.Password)
+	err = h.Service.RegisterUser(ctx, requestData.Email, requestData.Password)
 
 	if err != nil {
 		log.Println(err)
@@ -148,15 +177,36 @@ type CreateShortLinkRequest struct {
 }
 
 func (h *Handlers) CreateShortLink(c echo.Context) error {
-	session, err := h.Store.Get(c.Request(), "session_key")
+	email, err := retrieveEmailFromSession(c, h.Store)
 
-	if err != nil {
+	switch {
+	case errors.Is(err, nil):
+
+	case errors.Is(err, ErrNoEmailFound):
+		return c.Redirect(http.StatusTemporaryRedirect, "/login")
+
+	default:
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	fmt.Printf("CreateShortLink: %v\n", session.Values)
+	ctx := c.Request().Context()
 
-	if _, ok := session.Values["email"]; !ok {
-		return c.Redirect(http.StatusTemporaryRedirect, "/login")
+	requestData := new(CreateShortLinkRequest)
+
+	if err = c.Bind(&requestData); err != nil {
+		return c.JSON(http.StatusBadRequest, err.Error())
 	}
+
+	if c.Echo().Validator != nil {
+		if err := c.Validate(requestData); err != nil {
+			return c.JSON(http.StatusBadRequest, err.Error())
+		}
+	}
+
+	link, err := h.Service.CreateShortLink(ctx, requestData.ShortURL, requestData.LongURL, email)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	fmt.Println(link)
+	return c.JSON(http.StatusOK, echo.Map{})
 }

@@ -1,5 +1,4 @@
 run:
-	make migrate
 	go run cmd/main.go
 
 migrate_up:
