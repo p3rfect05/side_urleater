@@ -16,6 +16,7 @@ import (
 	"urleater/internal/handlers"
 	"urleater/internal/repository/postgresDB"
 	"urleater/internal/service"
+	"urleater/internal/validator"
 )
 
 const port = ":8080"
@@ -50,7 +51,11 @@ func main() {
 
 	// handlers layer
 	e := handlers.GetRoutes(&handlers.Handlers{Service: srv, Store: store})
-
+	httpValidator, err := validator.NewValidator()
+	if err != nil {
+		panic(err)
+	}
+	e.Validator = httpValidator
 	go func() {
 		if err := e.Start(port); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("could not start server: %v", err)

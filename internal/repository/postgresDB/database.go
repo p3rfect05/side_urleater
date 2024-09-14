@@ -95,6 +95,32 @@ func (s *Storage) GetUser(ctx context.Context, email string) (*User, error) {
 	return &user, nil
 }
 
+func (s *Storage) UpdateUserLinks(ctx context.Context, email string, urlsDelta int) (*User, error) {
+	var user User
+
+	query, args, err := s.queryBuilder.
+		Update("users").
+		Set("urls_left", squirrel.Expr("IF(urls_left + ? >= 0, urls_left + ?, 0)", urlsDelta, urlsDelta)).
+		Where(squirrel.Eq{"email": email}).
+		ToSql()
+
+	if err != nil {
+		return nil, fmt.Errorf("UpdateUserLinks query error | %w", err)
+	}
+
+	err = s.pgxPool.QueryRow(ctx, query, args...).Scan(
+		&user.Email,
+		&user.PasswordHash,
+		&user.UrlsLeft,
+	)
+
+	if err != nil {
+		return &User{}, fmt.Errorf("UpdateUserLinks query error | %w", err)
+	}
+
+	return &user, nil
+}
+
 func (s *Storage) CreateShortLink(ctx context.Context, shortLink string, longLink string, userEmail string) (*Link, error) {
 	var link Link
 	expiresAt := time.Now().UTC().Add(linkExpireIn)
@@ -146,6 +172,53 @@ func (s *Storage) GetShortLink(ctx context.Context, shortLink string) (*Link, er
 	return &link, nil
 }
 
+func (s *Storage) GetAllUserShortLinks(ctx context.Context, email string) ([]Link, error) {
+	var links []Link
+
+	query, args, err := s.queryBuilder.
+		Select(
+			"l.short_url",
+			"l.long_url",
+			"l.user_email",
+			"l.expires_at",
+		).
+		From("urls l").
+		Join("users u ON urls.user_email = users.email").
+		Where(squirrel.Eq{"urls.user_email": email}).
+		ToSql()
+
+	if err != nil {
+		return nil, fmt.Errorf("GetAllUserShortLinks query error | %w", err)
+	}
+
+	rows, err := s.pgxPool.Query(ctx, query, args...)
+
+	if err != nil {
+		return nil, fmt.Errorf("GetAllUserShortLinks query error | %w", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var link Link
+
+		err = rows.Scan(
+			&link.ShortUrl,
+			&link.LongUrl,
+			&link.UserEmail,
+			&link.ExpiresAt,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("GetAllUserShortLinks query error | %w", err)
+		}
+
+		links = append(links, link)
+	}
+
+	return links, nil
+}
+
 func (s *Storage) DeleteShortLink(ctx context.Context, shortLink string) error {
 	query, args, err := s.queryBuilder.
 		Delete("urls").
@@ -188,4 +261,48 @@ func (s *Storage) ExtendShortLink(ctx context.Context, shortLink string, expires
 	}
 
 	return &link, nil
+}
+
+func (s *Storage) GetSubscriptions(ctx context.Context) ([]Subscription, error) {
+	var subscriptions []Subscription
+
+	query, args, err := s.queryBuilder.
+		Select(
+			"id",
+			"name",
+			"total_urls",
+		).
+		From("subscriptions").
+		ToSql()
+
+	if err != nil {
+		return nil, fmt.Errorf("GetSubscriptions query error | %w", err)
+	}
+
+	rows, err := s.pgxPool.Query(ctx, query, args...)
+
+	if err != nil {
+		return nil, fmt.Errorf("GetSubscriptions query error | %w", err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var sub Subscription
+		err = rows.Scan(
+			&sub.Id,
+			&sub.Name,
+			&sub.TotalUrls,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("GetSubscriptions scan error | %w", err)
+		}
+
+		subscriptions = append(subscriptions, sub)
+
+	}
+
+	return subscriptions, nil
+
 }

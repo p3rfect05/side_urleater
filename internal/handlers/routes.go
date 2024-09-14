@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"github.com/labstack/echo/v4"
-	"urleater/internal/validator"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 type ServerInterface interface {
@@ -15,11 +15,8 @@ type ServerInterface interface {
 
 func GetRoutes(si ServerInterface) *echo.Echo {
 	e := echo.New()
-	httpValidator, err := validator.NewValidator()
-	if err != nil {
-		panic(err)
-	}
-	e.Validator = httpValidator
+	e.Use(middleware.CORS())
+	
 	e.GET("/", si.GetMainPage)
 	e.POST("/login", si.PostLogin)
 	e.POST("/register", si.PostRegister)

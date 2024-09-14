@@ -11,5 +11,12 @@ type User struct {
 type Link struct {
 	ShortUrl  string
 	LongUrl   string
+	UserEmail string
 	ExpiresAt time.Time
+}
+
+type Subscription struct {
+	Id        int
+	Name      string
+	TotalUrls int
 }
