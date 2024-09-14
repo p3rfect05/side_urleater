@@ -17,7 +17,11 @@ type Service interface {
 	UpdateUserShortLinks(ctx context.Context, email string, deltaLinks int) (*postgresDB.User, error)
 	GetAllUserShortLinks(ctx context.Context, email string) ([]postgresDB.Link, *postgresDB.User, error)
 	GetSubscriptions(ctx context.Context) ([]postgresDB.Subscription, error)
+	GetShortLink(ctx context.Context, shortLink string) (*postgresDB.Link, error)
 }
+
+// TODO populate
+var domain string = "http://localhost:8080"
 
 type Handlers struct {
 	Service Service
@@ -49,9 +53,7 @@ func (h *Handlers) GetMainPage(c echo.Context) error {
 		return c.Redirect(http.StatusTemporaryRedirect, "/login")
 	}
 
-	return c.JSON(http.StatusOK, echo.Map{
-		"hello": "goodbye",
-	})
+	return c.Render(http.StatusOK, "main_page.html", nil)
 }
 
 type LoginRequest struct {
@@ -67,7 +69,9 @@ func (h *Handlers) PostLogin(c echo.Context) error {
 	}
 
 	if email != "" {
-		return c.Redirect(http.StatusTemporaryRedirect, "/")
+		return c.JSON(http.StatusOK, echo.Map{
+			"redirect_to": "/",
+		})
 	}
 
 	ctx := c.Request().Context()
@@ -105,7 +109,10 @@ func (h *Handlers) PostLogin(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 
 	}
-	return c.JSON(http.StatusOK, echo.Map{})
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"redirect_to": "/",
+	})
 }
 
 func (h *Handlers) GetLogout(c echo.Context) error {
@@ -122,7 +129,7 @@ func (h *Handlers) GetLogout(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, echo.Map{})
+	return c.Redirect(http.StatusTemporaryRedirect, "/login")
 }
 
 type RegisterRequest struct {
@@ -138,7 +145,9 @@ func (h *Handlers) PostRegister(c echo.Context) error {
 	}
 
 	if email != "" {
-		return c.Redirect(http.StatusTemporaryRedirect, "/")
+		return c.JSON(http.StatusOK, echo.Map{
+			"redirect_to": "/",
+		})
 	}
 
 	ctx := c.Request().Context()
@@ -176,11 +185,14 @@ func (h *Handlers) PostRegister(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 
 	}
-	return c.JSON(http.StatusOK, echo.Map{})
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"redirect_to": "/",
+	})
 }
 
 type CreateShortLinkRequest struct {
-	ShortURL string `json:"short_url" validate:"required"`
+	ShortURL string `json:"short_url"`
 	LongURL  string `json:"long_url" validate:"required"`
 }
 
@@ -196,7 +208,9 @@ func (h *Handlers) CreateShortLink(c echo.Context) error {
 	}
 
 	if email == "" {
-		return c.Redirect(http.StatusTemporaryRedirect, "/login")
+		return c.JSON(http.StatusOK, echo.Map{
+			"redirect_to": "/login",
+		})
 	}
 
 	ctx := c.Request().Context()
@@ -237,7 +251,9 @@ func (h *Handlers) GetUserShortLinks(c echo.Context) error {
 	}
 
 	if email == "" {
-		return c.Redirect(http.StatusTemporaryRedirect, "/login")
+		return c.JSON(http.StatusOK, echo.Map{
+			"redirect_to": "/login",
+		})
 	}
 
 	ctx := c.Request().Context()
@@ -264,10 +280,12 @@ func (h *Handlers) GetLoginPage(c echo.Context) error {
 	if email != "" {
 		return c.Redirect(http.StatusTemporaryRedirect, "/")
 	}
-	return nil
+
+	return c.Render(http.StatusOK, "login_page.html", nil)
 }
 
 func (h *Handlers) GetRegisterPage(c echo.Context) error {
+	fmt.Println("hello")
 	email, err := retrieveEmailFromSession(c, h.Store)
 
 	if err != nil {
@@ -278,7 +296,8 @@ func (h *Handlers) GetRegisterPage(c echo.Context) error {
 		return c.Redirect(http.StatusTemporaryRedirect, "/")
 	}
 
-	return nil
+	fmt.Println("register")
+	return c.Render(http.StatusOK, "register_page.html", nil)
 }
 
 type UpdateUserShortLinksRequest struct {
@@ -297,7 +316,7 @@ func (h *Handlers) UpdateUserShortLinks(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err)
 	}
 
-	if email != "" {
+	if email != "admin@admin.com" {
 		return c.JSON(http.StatusInternalServerError, fmt.Errorf("user %s is not authorized to change links number", email))
 	}
 
@@ -325,4 +344,32 @@ func (h *Handlers) UpdateUserShortLinks(c echo.Context) error {
 		User: *user,
 	})
 
+}
+
+func (h *Handlers) GetCreateShortLink(c echo.Context) error {
+	email, err := retrieveEmailFromSession(c, h.Store)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	if email == "" {
+		return c.Redirect(http.StatusTemporaryRedirect, "/login")
+	}
+
+	return c.Render(http.StatusOK, "create_link_page.html", nil)
+}
+
+func (h *Handlers) GetShortLink(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	shortLink := c.Param("short_link")
+
+	link, err := h.Service.GetShortLink(ctx, shortLink)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.Redirect(http.StatusMovedPermanently, link.LongUrl)
 }

@@ -31,6 +31,15 @@ type Service struct {
 	storage Storage
 }
 
+var reservedNames = []string{
+	"register",
+	"login",
+	"logout",
+	"create_link",
+	"buy",
+	"subscriptions",
+}
+
 func New(storage Storage) *Service {
 	return &Service{
 		storage: storage,
@@ -50,7 +59,18 @@ func (s *Service) LoginUser(ctx context.Context, email string, password string) 
 }
 
 func (s *Service) RegisterUser(ctx context.Context, email string, password string) error {
-	err := s.storage.CreateUser(ctx, email, password)
+	_, err := s.storage.GetUser(ctx, email)
+
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+
+	case err != nil:
+		return fmt.Errorf("RegisterUser: could not get user %w", err)
+	default:
+		return fmt.Errorf("RegisterUser: user already exists")
+	}
+
+	err = s.storage.CreateUser(ctx, email, password)
 
 	if err != nil {
 		return fmt.Errorf("RegisterUser: could not create user %w", err)
@@ -87,6 +107,12 @@ func (s *Service) CreateShortLink(ctx context.Context, alias string, longLink st
 		}
 	}
 
+	for _, val := range reservedNames {
+		if val == shortLink {
+			return nil, fmt.Errorf("short link %s is not available", shortLink)
+		}
+	}
+
 	_, err := s.storage.GetShortLink(ctx, shortLink)
 
 	switch {
@@ -113,7 +139,7 @@ func (s *Service) GetSubscriptions(ctx context.Context) ([]postgresDB.Subscripti
 	case errors.Is(err, pgx.ErrNoRows):
 
 	case err != nil:
-		return nil, fmt.Errorf("GetSubscriptions: error while getting shortlink: %#v", err)
+		return nil, fmt.Errorf("GetSubscriptions: error while getting shortlink: %w", err)
 	default:
 		return nil, fmt.Errorf("GetSubscriptions: shortlink already exists")
 	}
@@ -125,7 +151,7 @@ func (s *Service) GetAllUserShortLinks(ctx context.Context, email string) ([]pos
 	user, err := s.storage.GetUser(ctx, email)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("GetAllUserShortLinks: error while getting user %s: %#v", email, err)
+		return nil, nil, fmt.Errorf("GetAllUserShortLinks: error while getting user %s: %w", email, err)
 	}
 
 	links, err := s.storage.GetAllUserShortLinks(ctx, email)
@@ -134,7 +160,7 @@ func (s *Service) GetAllUserShortLinks(ctx context.Context, email string) ([]pos
 	case errors.Is(err, pgx.ErrNoRows):
 
 	default:
-		return nil, nil, fmt.Errorf("GetAllUsersShortLinks: error while getting all user's %s shortlinks: %#v", email, err)
+		return nil, nil, fmt.Errorf("GetAllUsersShortLinks: error while getting all user's %s shortlinks: %w", email, err)
 	}
 
 	return links, user, nil
@@ -145,10 +171,20 @@ func (s *Service) UpdateUserShortLinks(ctx context.Context, email string, deltaL
 	user, err := s.storage.UpdateUserLinks(ctx, email, deltaLinks)
 
 	if err != nil {
-		return nil, fmt.Errorf("UpdateUserShortLinks: error while updating user's %s shortlinks: %#v by %d", email, err, deltaLinks)
+		return nil, fmt.Errorf("UpdateUserShortLinks: error while updating user's %s shortlinks: %w by %d", email, err, deltaLinks)
 	}
 
 	return user, nil
+}
+
+func (s *Service) GetShortLink(ctx context.Context, shortLink string) (*postgresDB.Link, error) {
+	link, err := s.storage.GetShortLink(ctx, shortLink)
+	if err != nil {
+		return nil, fmt.Errorf("GetShortLink: error while getting short link %s: %w", shortLink, err)
+	}
+
+	return link, nil
+
 }
 
 const letterBytes = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
