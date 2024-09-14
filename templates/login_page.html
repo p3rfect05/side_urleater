@@ -52,24 +52,24 @@
 
     function handleLogin() {
         // Получаем значения полей
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
+        const email = document.getElementById('email');
+        const password = document.getElementById('password');
 
 
         // Проверяем, что поля не пустые
-        if (!email || !password) {
+        if (!email.value || !password.value) {
             alert('Пожалуйста, заполните все поля!');
             return;
         }
 
-        if(!validateEmail(email)) {
+        if(!validateEmail(email.value)) {
             alert("Неверный формат email")
             return;
         }
 
         let user = {
-            email: email,
-            password: password
+            email: email.value,
+            password: password.value
         }
 
         fetch(`${domain}/login`, {
@@ -80,9 +80,15 @@
             body: JSON.stringify(user)
         }).then(response => response.json()
             ).then(data => {
-            console.log(data)
+            console.log(data, "redirect_to" in data)
                 if ("redirect_to" in data) {
                     window.location.replace(domain + data.redirect_to)
+                } else {
+
+                    email.style.border = "1px solid red"
+                    password.style.border = "1px solid red"
+
+                    alert("Incorrect login or password")
                 }
             }
         )
