@@ -135,13 +135,8 @@ func (s *Service) CreateShortLink(ctx context.Context, alias string, longLink st
 func (s *Service) GetSubscriptions(ctx context.Context) ([]postgresDB.Subscription, error) {
 	subs, err := s.storage.GetSubscriptions(ctx)
 
-	switch {
-	case errors.Is(err, pgx.ErrNoRows):
-
-	case err != nil:
-		return nil, fmt.Errorf("GetSubscriptions: error while getting shortlink: %w", err)
-	default:
-		return nil, fmt.Errorf("GetSubscriptions: shortlink already exists")
+	if err != nil {
+		return nil, fmt.Errorf("GetSubscriptions: could not get subscriptions %w", err)
 	}
 
 	return subs, nil

@@ -37,6 +37,9 @@
         <li class="nav-item">
           <a class="nav-link" href="/create_link" id="my_link">My Links</a>
         </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/subscriptions" id="sub">Subscriptions</a>
+        </li>
       </ul>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item">
@@ -97,7 +100,7 @@
           </span>
         </div>
         <div style="width: 80%;margin: auto">
-          <div class="col-3" id="qr_code">
+          <div id="qr_code">
 
           </div>
         </div>
@@ -204,6 +207,12 @@
             showModal(data.link.ShortUrl)
 
 
+            let qr_code_header = document.createElement("h2")
+
+            qr_code_header.textContent = "Scan QR Code now!"
+            qr_code_header.style.textAlign = "center"
+
+            document.getElementById("qr_code").before(qr_code_header)
 
             new QRCode("qr_code", {
               text: `${domain}/${data.link.ShortUrl}`,
@@ -215,6 +224,10 @@
             });
 
 
+
+            let qr_code_img = document.querySelector("#qr_code img")
+
+            qr_code_img.style.margin = "auto"
 
           }
           else {

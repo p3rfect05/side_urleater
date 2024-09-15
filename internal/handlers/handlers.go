@@ -285,7 +285,6 @@ func (h *Handlers) GetLoginPage(c echo.Context) error {
 }
 
 func (h *Handlers) GetRegisterPage(c echo.Context) error {
-	fmt.Println("hello")
 	email, err := retrieveEmailFromSession(c, h.Store)
 
 	if err != nil {
@@ -296,7 +295,6 @@ func (h *Handlers) GetRegisterPage(c echo.Context) error {
 		return c.Redirect(http.StatusTemporaryRedirect, "/")
 	}
 
-	fmt.Println("register")
 	return c.Render(http.StatusOK, "register_page.html", nil)
 }
 
@@ -372,4 +370,49 @@ func (h *Handlers) GetShortLink(c echo.Context) error {
 	}
 
 	return c.Redirect(http.StatusMovedPermanently, link.LongUrl)
+}
+
+type GetSubscriptionsResponse struct {
+	Subscriptions []postgresDB.Subscription `json:"subscriptions"`
+}
+
+func (h *Handlers) GetSubscriptions(c echo.Context) error {
+	email, err := retrieveEmailFromSession(c, h.Store)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	if email == "" {
+		return c.JSON(http.StatusOK, echo.Map{
+			"redirect_to": "/login",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	subscriptions, err := h.Service.GetSubscriptions(ctx)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, GetSubscriptionsResponse{
+		Subscriptions: subscriptions,
+	})
+}
+
+func (h *Handlers) GetSubscriptionsPage(c echo.Context) error {
+	email, err := retrieveEmailFromSession(c, h.Store)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	if email == "" {
+		return c.Redirect(http.StatusTemporaryRedirect, "/login")
+	}
+
+	return c.Render(http.StatusOK, "subscriptions.html", nil)
+
 }

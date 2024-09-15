@@ -19,6 +19,8 @@ type ServerInterface interface {
 	GetUserShortLinks(c echo.Context) error
 	GetCreateShortLink(c echo.Context) error
 	GetShortLink(c echo.Context) error
+	GetSubscriptions(c echo.Context) error
+	GetSubscriptionsPage(c echo.Context) error
 }
 
 type Template struct {
@@ -51,6 +53,8 @@ func GetRoutes(si ServerInterface) *echo.Echo {
 	e.POST("/create_link", si.CreateShortLink)
 	e.GET("/create_link", si.GetCreateShortLink)
 	e.GET("/:short_link", si.GetShortLink)
+	e.GET("/subscriptions", si.GetSubscriptionsPage)
+	e.GET("/get_subscriptions", si.GetSubscriptions)
 
 	return e
 
