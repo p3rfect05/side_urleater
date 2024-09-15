@@ -18,6 +18,7 @@ type Service interface {
 	GetAllUserShortLinks(ctx context.Context, email string) ([]postgresDB.Link, *postgresDB.User, error)
 	GetSubscriptions(ctx context.Context) ([]postgresDB.Subscription, error)
 	GetShortLink(ctx context.Context, shortLink string) (*postgresDB.Link, error)
+	GetUser(ctx context.Context, email string) (*postgresDB.User, error)
 }
 
 // TODO populate
@@ -414,5 +415,36 @@ func (h *Handlers) GetSubscriptionsPage(c echo.Context) error {
 	}
 
 	return c.Render(http.StatusOK, "subscriptions.html", nil)
+
+}
+
+type GetUserResponse struct {
+	User postgresDB.User `json:"user"`
+}
+
+func (h *Handlers) GetUser(c echo.Context) error {
+	email, err := retrieveEmailFromSession(c, h.Store)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	if email == "" {
+		return c.JSON(http.StatusOK, echo.Map{
+			"redirect_to": "/login",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	user, err := h.Service.GetUser(ctx, email)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, GetUserResponse{
+		User: *user,
+	})
 
 }

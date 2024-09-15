@@ -43,6 +43,9 @@
       </ul>
       <ul class="navbar-nav ms-auto">
         <li class="nav-item">
+          <a class="nav-link" id="username"></a>
+        </li>
+        <li class="nav-item">
           <a class="nav-link" href="/logout" id="logout-link">Logout</a>
         </li>
       </ul>
@@ -269,6 +272,19 @@
 
     console.log(window.location.pathname)
     setActiveLink(window.location.pathname);
+
+    fetch(`${domain}/user`).then(response => response.json()
+    ).then(data => {
+              console.log(data, "redirect_to" in data)
+              if ("redirect_to" in data) {
+                window.location.replace(domain + data.redirect_to)
+                return;
+              } else {
+
+                document.getElementById("username").textContent = data.user.Email.split("@")[0]
+              }
+            }
+    )
   })
 
   let shortLinkInput = document.getElementById("customPath")

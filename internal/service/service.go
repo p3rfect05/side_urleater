@@ -142,6 +142,16 @@ func (s *Service) GetSubscriptions(ctx context.Context) ([]postgresDB.Subscripti
 	return subs, nil
 }
 
+func (s *Service) GetUser(ctx context.Context, email string) (*postgresDB.User, error) {
+	user, err := s.storage.GetUser(ctx, email)
+
+	if err != nil {
+		return nil, fmt.Errorf("GetUser: could not get user %w", err)
+	}
+
+	return user, nil
+}
+
 func (s *Service) GetAllUserShortLinks(ctx context.Context, email string) ([]postgresDB.Link, *postgresDB.User, error) {
 	user, err := s.storage.GetUser(ctx, email)
 
