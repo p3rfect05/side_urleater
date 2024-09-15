@@ -172,7 +172,7 @@ func (s *Storage) GetShortLink(ctx context.Context, shortLink string) (*Link, er
 	return &link, nil
 }
 
-func (s *Storage) GetAllUserShortLinks(ctx context.Context, email string) ([]Link, error) {
+func (s *Storage) GetUserShortLinksWithOffsetAndLimit(ctx context.Context, email string, offset int, limit int) ([]Link, error) {
 	var links []Link
 
 	query, args, err := s.queryBuilder.
@@ -185,6 +185,8 @@ func (s *Storage) GetAllUserShortLinks(ctx context.Context, email string) ([]Lin
 		From("urls l").
 		Join("users u ON urls.user_email = users.email").
 		Where(squirrel.Eq{"urls.user_email": email}).
+		Offset(uint64(offset)).
+		Limit(uint64(limit)).
 		ToSql()
 
 	if err != nil {
@@ -219,10 +221,11 @@ func (s *Storage) GetAllUserShortLinks(ctx context.Context, email string) ([]Lin
 	return links, nil
 }
 
-func (s *Storage) DeleteShortLink(ctx context.Context, shortLink string) error {
+func (s *Storage) DeleteShortLink(ctx context.Context, shortLink string, email string) error {
 	query, args, err := s.queryBuilder.
 		Delete("urls").
 		Where(squirrel.Eq{"short_url": shortLink}).
+		Where(squirrel.Eq{"email": email}).
 		ToSql()
 
 	if err != nil {

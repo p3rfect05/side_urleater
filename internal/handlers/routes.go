@@ -1,10 +1,13 @@
 package handlers
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"html/template"
 	"io"
+	_ "urleater/docs"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
 type ServerInterface interface {
@@ -22,6 +25,7 @@ type ServerInterface interface {
 	GetSubscriptions(c echo.Context) error
 	GetSubscriptionsPage(c echo.Context) error
 	GetUser(c echo.Context) error
+	DeleteShortLink(c echo.Context) error
 }
 
 type Template struct {
@@ -32,6 +36,11 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 	return t.templates.ExecuteTemplate(w, name, data)
 }
 
+// @title			URLEater Swagger API
+// @version		1.0
+// @description	Это описание API для работы с сайтом по сокращению ссылок
+// @host			localhost:8080
+// @BasePath		/
 func GetRoutes(si ServerInterface) *echo.Echo {
 	e := echo.New()
 
@@ -45,6 +54,8 @@ func GetRoutes(si ServerInterface) *echo.Echo {
 
 	e.Renderer = t
 
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
+
 	e.GET("/", si.GetMainPage)
 	e.GET("/login", si.GetLoginPage)
 	e.GET("/register", si.GetRegisterPage)
@@ -57,6 +68,8 @@ func GetRoutes(si ServerInterface) *echo.Echo {
 	e.GET("/subscriptions", si.GetSubscriptionsPage)
 	e.GET("/get_subscriptions", si.GetSubscriptions)
 	e.GET("/user", si.GetUser)
+	e.GET("/get_links", si.GetUserShortLinks)
+	e.DELETE("/delete_link", si.DeleteShortLink)
 
 	return e
 

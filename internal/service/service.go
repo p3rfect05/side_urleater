@@ -18,9 +18,9 @@ type Storage interface {
 	GetUser(ctx context.Context, email string) (*postgresDB.User, error)
 	CreateShortLink(ctx context.Context, shortLink string, longLink string, userID string) (*postgresDB.Link, error)
 	GetShortLink(ctx context.Context, shortLink string) (*postgresDB.Link, error)
-	DeleteShortLink(ctx context.Context, shortLink string) error
+	DeleteShortLink(ctx context.Context, shortLink string, email string) error
 	ExtendShortLink(ctx context.Context, shortLink string, expiresAt time.Time) (*postgresDB.Link, error)
-	GetAllUserShortLinks(ctx context.Context, email string) ([]postgresDB.Link, error)
+	GetUserShortLinksWithOffsetAndLimit(ctx context.Context, email string, offset int, limit int) ([]postgresDB.Link, error)
 	UpdateUserLinks(ctx context.Context, email string, urlsDelta int) (*postgresDB.User, error)
 	GetSubscriptions(ctx context.Context) ([]postgresDB.Subscription, error)
 }
@@ -152,14 +152,14 @@ func (s *Service) GetUser(ctx context.Context, email string) (*postgresDB.User, 
 	return user, nil
 }
 
-func (s *Service) GetAllUserShortLinks(ctx context.Context, email string) ([]postgresDB.Link, *postgresDB.User, error) {
+func (s *Service) GetUserShortLinksWithOffsetAndLimit(ctx context.Context, email string, offset int, limit int) ([]postgresDB.Link, *postgresDB.User, error) {
 	user, err := s.storage.GetUser(ctx, email)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("GetAllUserShortLinks: error while getting user %s: %w", email, err)
 	}
 
-	links, err := s.storage.GetAllUserShortLinks(ctx, email)
+	links, err := s.storage.GetUserShortLinksWithOffsetAndLimit(ctx, email, offset, limit)
 
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
@@ -190,6 +190,16 @@ func (s *Service) GetShortLink(ctx context.Context, shortLink string) (*postgres
 
 	return link, nil
 
+}
+
+func (s *Service) DeleteShortLink(ctx context.Context, shortLink string, email string) error {
+	err := s.storage.DeleteShortLink(ctx, shortLink, email)
+
+	if err != nil {
+		return fmt.Errorf("DeleteShortLink: error while deleting short link %s with email %s: %w", shortLink, email, err)
+	}
+
+	return nil
 }
 
 const letterBytes = "1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"

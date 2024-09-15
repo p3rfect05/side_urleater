@@ -3,11 +3,14 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"github.com/antonlindstrom/pgstore"
-	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
+	"strconv"
+	_ "urleater/docs"
 	"urleater/internal/repository/postgresDB"
+
+	"github.com/antonlindstrom/pgstore"
+	"github.com/labstack/echo/v4"
 )
 
 type Service interface {
@@ -15,10 +18,11 @@ type Service interface {
 	RegisterUser(ctx context.Context, email string, password string) error
 	CreateShortLink(ctx context.Context, shortLink string, longLink string, userEmail string) (*postgresDB.Link, error)
 	UpdateUserShortLinks(ctx context.Context, email string, deltaLinks int) (*postgresDB.User, error)
-	GetAllUserShortLinks(ctx context.Context, email string) ([]postgresDB.Link, *postgresDB.User, error)
+	GetUserShortLinksWithOffsetAndLimit(ctx context.Context, email string, offset int, limit int) ([]postgresDB.Link, *postgresDB.User, error)
 	GetSubscriptions(ctx context.Context) ([]postgresDB.Subscription, error)
 	GetShortLink(ctx context.Context, shortLink string) (*postgresDB.Link, error)
 	GetUser(ctx context.Context, email string) (*postgresDB.User, error)
+	DeleteShortLink(ctx context.Context, shortLink string, email string) error
 }
 
 // TODO populate
@@ -27,6 +31,10 @@ var domain string = "http://localhost:8080"
 type Handlers struct {
 	Service Service
 	Store   *pgstore.PGStore
+}
+
+type redirectResponse struct {
+	redirectTo string
 }
 
 func retrieveEmailFromSession(c echo.Context, store *pgstore.PGStore) (string, error) {
@@ -43,6 +51,14 @@ func retrieveEmailFromSession(c echo.Context, store *pgstore.PGStore) (string, e
 	return res, nil
 }
 
+// GetMainPage godoc
+//
+// @Summary Gets main page HTML
+// @Produce	html
+// @Success 200
+// @Failure 500 {} nil
+// @Failure 307 {} nil
+// @Router /	[get]
 func (h *Handlers) GetMainPage(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -62,6 +78,16 @@ type LoginRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
+// PostLogin godoc
+//
+//	@Summary		Logins a user
+//	@Accept			json
+//	@Param			username	body		string	true	"Username"
+//	@Param			password	body		string	true	"Password"
+//	@Success		200			{object}	redirectResponse
+//	@Failure		400			{} nil
+//	@Failure		500			{} nil
+//	@Router			/login      [post]
 func (h *Handlers) PostLogin(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -70,8 +96,8 @@ func (h *Handlers) PostLogin(c echo.Context) error {
 	}
 
 	if email != "" {
-		return c.JSON(http.StatusOK, echo.Map{
-			"redirect_to": "/",
+		return c.JSON(http.StatusBadRequest, redirectResponse{
+			redirectTo: "/",
 		})
 	}
 
@@ -111,11 +137,17 @@ func (h *Handlers) PostLogin(c echo.Context) error {
 
 	}
 
-	return c.JSON(http.StatusOK, echo.Map{
-		"redirect_to": "/",
+	return c.JSON(http.StatusOK, redirectResponse{
+		redirectTo: "/",
 	})
 }
 
+// GetLogout godoc
+//
+//	@Summary		Logs out a user
+//	@Success		307			{object}	redirectResponse
+//	@Failure		500			{} nil
+//	@Router			/logout      [get]
 func (h *Handlers) GetLogout(c echo.Context) error {
 	session, err := h.Store.Get(c.Request(), "session_key")
 
@@ -138,6 +170,16 @@ type RegisterRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
+// PostRegister godoc
+//
+//	@Summary		Registers a user
+//	@Accept			json
+//	@Param			username	body		string	true	"Username"
+//	@Param			password	body		string	true	"Password"
+//	@Success		200			{object}	redirectResponse
+//	@Failure		400			{} nil
+//	@Failure		500			{} nil
+//	@Router			/register      [post]
 func (h *Handlers) PostRegister(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -146,8 +188,8 @@ func (h *Handlers) PostRegister(c echo.Context) error {
 	}
 
 	if email != "" {
-		return c.JSON(http.StatusOK, echo.Map{
-			"redirect_to": "/",
+		return c.JSON(http.StatusOK, redirectResponse{
+			redirectTo: "/",
 		})
 	}
 
@@ -187,8 +229,8 @@ func (h *Handlers) PostRegister(c echo.Context) error {
 
 	}
 
-	return c.JSON(http.StatusOK, echo.Map{
-		"redirect_to": "/",
+	return c.JSON(http.StatusOK, redirectResponse{
+		redirectTo: "/",
 	})
 }
 
@@ -201,6 +243,16 @@ type CreateShortLinkResponse struct {
 	Link postgresDB.Link `json:"link"`
 }
 
+// CreateShortLink godoc
+//
+//	@Summary		Creates a link
+//	@Accept			json
+//	@Param			short_url	body		string	true	"Short URL"
+//	@Param			long_url	body		string	true	"Long URL"
+//	@Success		200			{object}	CreateShortLinkResponse
+//	@Failure		400			{} nil
+//	@Failure		500			{} nil
+//	@Router			/create_link      [post]
 func (h *Handlers) CreateShortLink(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -209,8 +261,8 @@ func (h *Handlers) CreateShortLink(c echo.Context) error {
 	}
 
 	if email == "" {
-		return c.JSON(http.StatusOK, echo.Map{
-			"redirect_to": "/login",
+		return c.JSON(http.StatusBadRequest, redirectResponse{
+			redirectTo: "/login",
 		})
 	}
 
@@ -244,6 +296,16 @@ type GetUserShortLinksResponse struct {
 	User  postgresDB.User   `json:"user"`
 }
 
+// GetUserShortLinks godoc
+//
+//	@Summary		Gets user's short links
+//	@Accept			json
+//	@Param			limit	query		int	true	"Limit of a number of user's short links"
+//	@Param			offset	query		int	true	"Maximum amount of links to show"
+//	@Success		200			{object}	GetUserShortLinksResponse
+//	@Failure		400			{} nil
+//	@Failure		500			{} nil
+//	@Router			/get_links      [get]
 func (h *Handlers) GetUserShortLinks(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -252,14 +314,28 @@ func (h *Handlers) GetUserShortLinks(c echo.Context) error {
 	}
 
 	if email == "" {
-		return c.JSON(http.StatusOK, echo.Map{
-			"redirect_to": "/login",
+		return c.JSON(http.StatusBadRequest, redirectResponse{
+			redirectTo: "/login",
 		})
+	}
+
+	limitParam, offsetParam := c.QueryParam("limit"), c.QueryParam("offset")
+
+	limit, err := strconv.Atoi(limitParam)
+
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+
+	offset, err := strconv.Atoi(offsetParam)
+
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
 	ctx := c.Request().Context()
 
-	links, user, err := h.Service.GetAllUserShortLinks(ctx, email)
+	links, user, err := h.Service.GetUserShortLinksWithOffsetAndLimit(ctx, email, offset, limit)
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, err.Error())
@@ -271,6 +347,14 @@ func (h *Handlers) GetUserShortLinks(c echo.Context) error {
 	})
 }
 
+// GetLoginPage godoc
+//
+// @Summary Gets login page HTML
+// @Produce	html
+// @Success 200
+// @Failure 500
+// @Failure 307
+// @Router /login	[get]
 func (h *Handlers) GetLoginPage(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -285,6 +369,14 @@ func (h *Handlers) GetLoginPage(c echo.Context) error {
 	return c.Render(http.StatusOK, "login_page.html", nil)
 }
 
+// GetRegisterPage godoc
+//
+// @Summary Gets register page HTML
+// @Produce	html
+// @Success 200
+// @Failure 500
+// @Failure 307
+// @Router /register	[get]
 func (h *Handlers) GetRegisterPage(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -345,6 +437,14 @@ func (h *Handlers) UpdateUserShortLinks(c echo.Context) error {
 
 }
 
+// GetCreateShortLink godoc
+//
+// @Summary Gets create link page HTML
+// @Produce	html
+// @Success 200
+// @Failure 500
+// @Failure 307
+// @Router /create_link	[get]
 func (h *Handlers) GetCreateShortLink(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -359,6 +459,13 @@ func (h *Handlers) GetCreateShortLink(c echo.Context) error {
 	return c.Render(http.StatusOK, "create_link_page.html", nil)
 }
 
+// GetShortLink godoc
+//
+//	@Summary		Gets short link
+//	@Param			ShortLink	path		string	true	"Short link to get"
+//	@Success		307			{object}	DeleteShortLinkRequest
+//	@Failure		400			{} nil
+//	@Router			/      [get]
 func (h *Handlers) GetShortLink(c echo.Context) error {
 	ctx := c.Request().Context()
 
@@ -377,6 +484,13 @@ type GetSubscriptionsResponse struct {
 	Subscriptions []postgresDB.Subscription `json:"subscriptions"`
 }
 
+// GetSubscriptions godoc
+//
+//	@Summary		Gets all subscriptions
+//	@Success		200			{object}	GetSubscriptionsResponse
+//	@Failure		400			{} nil
+//	@Failure		500			{} nil
+//	@Router			/get_subscriptions      [get]
 func (h *Handlers) GetSubscriptions(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -385,8 +499,8 @@ func (h *Handlers) GetSubscriptions(c echo.Context) error {
 	}
 
 	if email == "" {
-		return c.JSON(http.StatusOK, echo.Map{
-			"redirect_to": "/login",
+		return c.JSON(http.StatusBadRequest, redirectResponse{
+			redirectTo: "/login",
 		})
 	}
 
@@ -403,6 +517,14 @@ func (h *Handlers) GetSubscriptions(c echo.Context) error {
 	})
 }
 
+// GetSubscriptionsPage godoc
+//
+// @Summary Gets subscription page HTML
+// @Produce	html
+// @Success 200
+// @Failure 500
+// @Failure 307
+// @Router /subscriptions	[get]
 func (h *Handlers) GetSubscriptionsPage(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -422,6 +544,13 @@ type GetUserResponse struct {
 	User postgresDB.User `json:"user"`
 }
 
+// GetUser godoc
+//
+//	@Summary		Gets user from session
+//	@Success		200			{object}	GetUserResponse
+//	@Failure		400			{} nil
+//	@Failure		500			{} nil
+//	@Router			/user      [get]
 func (h *Handlers) GetUser(c echo.Context) error {
 	email, err := retrieveEmailFromSession(c, h.Store)
 
@@ -430,8 +559,8 @@ func (h *Handlers) GetUser(c echo.Context) error {
 	}
 
 	if email == "" {
-		return c.JSON(http.StatusOK, echo.Map{
-			"redirect_to": "/login",
+		return c.JSON(http.StatusBadRequest, redirectResponse{
+			redirectTo: "/login",
 		})
 	}
 
@@ -447,4 +576,52 @@ func (h *Handlers) GetUser(c echo.Context) error {
 		User: *user,
 	})
 
+}
+
+type DeleteShortLinkRequest struct {
+	ShortLink string `json:"short_link"`
+}
+
+// DeleteShortLink godoc
+//
+//	@Summary		Tries to delete the short link
+//	@Param			ShortLink	body		string	true	"Short link to delete"
+//	@Success		200			{object}	DeleteShortLinkRequest
+//	@Failure		400			{} nil
+//	@Failure		500			{} nil
+//	@Router			/delete_link      [delete]
+func (h *Handlers) DeleteShortLink(c echo.Context) error {
+	email, err := retrieveEmailFromSession(c, h.Store)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err)
+	}
+
+	if email == "" {
+		return c.JSON(http.StatusBadRequest, redirectResponse{
+			redirectTo: "/login",
+		})
+	}
+
+	ctx := c.Request().Context()
+
+	requestData := new(DeleteShortLinkRequest)
+
+	if err := c.Bind(&requestData); err != nil {
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+
+	if c.Echo().Validator != nil {
+		if err := c.Validate(requestData); err != nil {
+			return c.JSON(http.StatusBadRequest, err.Error())
+		}
+	}
+
+	err = h.Service.DeleteShortLink(ctx, requestData.ShortLink, email)
+
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, nil)
 }
