@@ -96,8 +96,8 @@ func (h *Handlers) PostLogin(c echo.Context) error {
 	}
 
 	if email != "" {
-		return c.JSON(http.StatusBadRequest, redirectResponse{
-			redirectTo: "/",
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"redirectTo": "/",
 		})
 	}
 
@@ -137,8 +137,8 @@ func (h *Handlers) PostLogin(c echo.Context) error {
 
 	}
 
-	return c.JSON(http.StatusOK, redirectResponse{
-		redirectTo: "/",
+	return c.JSON(http.StatusOK, echo.Map{
+		"redirectTo": "/",
 	})
 }
 
@@ -188,8 +188,8 @@ func (h *Handlers) PostRegister(c echo.Context) error {
 	}
 
 	if email != "" {
-		return c.JSON(http.StatusOK, redirectResponse{
-			redirectTo: "/",
+		return c.JSON(http.StatusOK, echo.Map{
+			"redirectTo": "/",
 		})
 	}
 
@@ -229,8 +229,8 @@ func (h *Handlers) PostRegister(c echo.Context) error {
 
 	}
 
-	return c.JSON(http.StatusOK, redirectResponse{
-		redirectTo: "/",
+	return c.JSON(http.StatusOK, echo.Map{
+		"redirectTo": "/",
 	})
 }
 
@@ -261,8 +261,8 @@ func (h *Handlers) CreateShortLink(c echo.Context) error {
 	}
 
 	if email == "" {
-		return c.JSON(http.StatusBadRequest, redirectResponse{
-			redirectTo: "/login",
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"redirectTo": "/login",
 		})
 	}
 
@@ -314,8 +314,8 @@ func (h *Handlers) GetUserShortLinks(c echo.Context) error {
 	}
 
 	if email == "" {
-		return c.JSON(http.StatusBadRequest, redirectResponse{
-			redirectTo: "/login",
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"redirectTo": "/login",
 		})
 	}
 
@@ -499,8 +499,8 @@ func (h *Handlers) GetSubscriptions(c echo.Context) error {
 	}
 
 	if email == "" {
-		return c.JSON(http.StatusBadRequest, redirectResponse{
-			redirectTo: "/login",
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"redirectTo": "/login",
 		})
 	}
 
@@ -512,8 +512,8 @@ func (h *Handlers) GetSubscriptions(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, GetSubscriptionsResponse{
-		Subscriptions: subscriptions,
+	return c.JSON(http.StatusOK, echo.Map{
+		"subscriptions": subscriptions,
 	})
 }
 
@@ -559,8 +559,8 @@ func (h *Handlers) GetUser(c echo.Context) error {
 	}
 
 	if email == "" {
-		return c.JSON(http.StatusBadRequest, redirectResponse{
-			redirectTo: "/login",
+		return c.JSON(http.StatusBadRequest, echo.Map{
+			"redirectTo": "/login",
 		})
 	}
 

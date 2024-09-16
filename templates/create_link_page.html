@@ -103,14 +103,14 @@
           </span>
         </div>
         <div style="width: 80%;margin: auto">
+          <h2 id="qr_code_header">
+
+          </h2>
           <div id="qr_code">
 
           </div>
         </div>
     </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-      </div>
     </div>
   </div>
 </div>
@@ -134,6 +134,15 @@
     // Alert the copied text
     alert("Copied the text: " + copyText);
   })
+
+  document.querySelector(".btn-close").addEventListener("click", function (){
+    console.log(document.querySelector("#qr_code img"))
+    document.querySelector("#qr_code img").remove()
+    document.getElementById("qr_code_header").textContent = ""
+
+  })
+
+
 
 
   function validateLongUrl(string) {
@@ -210,7 +219,7 @@
             showModal(data.link.ShortUrl)
 
 
-            let qr_code_header = document.createElement("h2")
+            let qr_code_header = document.getElementById("qr_code_header")
 
             qr_code_header.textContent = "Scan QR Code now!"
             qr_code_header.style.textAlign = "center"
@@ -276,8 +285,8 @@
     fetch(`${domain}/user`).then(response => response.json()
     ).then(data => {
               console.log(data, "redirect_to" in data)
-              if ("redirect_to" in data) {
-                window.location.replace(domain + data.redirect_to)
+              if ("redirectTo" in data) {
+                window.location.replace(domain + data.redirectTo)
                 return;
               } else {
 

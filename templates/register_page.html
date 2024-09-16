@@ -102,8 +102,8 @@
     }).then(response => response.json())
             .then(data => {
       console.log(data)
-          if ("redirect_to" in data) {
-            window.location.replace(domain + data.redirect_to)
+          if ("redirectTo" in data) {
+            window.location.replace(domain + data.redirectTo)
           } else {
             email.style.border = "1px solid red"
             password.style.border = "1px solid red"
